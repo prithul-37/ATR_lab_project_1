@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/UseR/Documents/ATR_lab_project_1/**)",
+      "Read(//c/Users/UseR/Documents/ATR_lab_project_1/Packages/**)",
+      "Read(//c/Users/UseR/Documents/ATR_lab_project_1/ProjectSettings/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
