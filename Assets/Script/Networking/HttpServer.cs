@@ -12,6 +12,9 @@ public class HttpServer : MonoBehaviour
     public int Port = 8080;
     public bool StartOnAwake = true;
 
+    [Header("Camera Settings")]
+    public CameraCapture CameraCapture;
+
     private HttpListener _httpListener;
     private Thread _listenerThread;
     private bool _isRunning = false;
@@ -101,6 +104,15 @@ public class HttpServer : MonoBehaviour
                     responseString = "{\"status\":\"success\",\"message\":\"Command received\"}";
                 }
             }
+            else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/camera/frame")
+            {
+                HandleCameraFrame(response);
+                return; // Response handled by HandleCameraFrame
+            }
+            else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/camera/info")
+            {
+                HandleCameraInfo(out responseString);
+            }
             else
             {
                 statusCode = 404;
@@ -120,5 +132,67 @@ public class HttpServer : MonoBehaviour
         response.ContentLength64 = buffer.Length;
         response.OutputStream.Write(buffer, 0, buffer.Length);
         response.OutputStream.Close();
+    }
+
+    private void HandleCameraFrame(HttpListenerResponse response)
+    {
+        try
+        {
+            if (CameraCapture == null)
+            {
+                response.StatusCode = 503;
+                response.ContentType = "application/json";
+                string errorJson = "{\"status\":\"error\",\"message\":\"Camera capture not available\"}";
+                byte[] errorBuffer = Encoding.UTF8.GetBytes(errorJson);
+                response.ContentLength64 = errorBuffer.Length;
+                response.OutputStream.Write(errorBuffer, 0, errorBuffer.Length);
+                response.OutputStream.Close();
+                return;
+            }
+
+            byte[] frameData = CameraCapture.GetLastFrame();
+
+            if (frameData == null || frameData.Length == 0)
+            {
+                response.StatusCode = 404;
+                response.ContentType = "application/json";
+                string errorJson = "{\"status\":\"error\",\"message\":\"No frame available\"}";
+                byte[] errorBuffer = Encoding.UTF8.GetBytes(errorJson);
+                response.ContentLength64 = errorBuffer.Length;
+                response.OutputStream.Write(errorBuffer, 0, errorBuffer.Length);
+                response.OutputStream.Close();
+                return;
+            }
+
+            // Send JPEG frame
+            response.StatusCode = 200;
+            response.ContentType = "image/jpeg";
+            response.ContentLength64 = frameData.Length;
+            response.OutputStream.Write(frameData, 0, frameData.Length);
+            response.OutputStream.Close();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Camera frame error: {e.Message}");
+            response.StatusCode = 500;
+            response.OutputStream.Close();
+        }
+    }
+
+    private void HandleCameraInfo(out string responseString)
+    {
+        if (CameraCapture == null)
+        {
+            responseString = "{\"status\":\"error\",\"message\":\"Camera capture not available\"}";
+            return;
+        }
+
+        responseString = $"{{" +
+            $"\"status\":\"success\"," +
+            $"\"width\":{CameraCapture.CaptureWidth}," +
+            $"\"height\":{CameraCapture.CaptureHeight}," +
+            $"\"framerate\":{CameraCapture.CaptureFrameRate}," +
+            $"\"hasFrame\":{(CameraCapture.HasCapturedFrame() ? "true" : "false")}" +
+        $"}}";
     }
 }
