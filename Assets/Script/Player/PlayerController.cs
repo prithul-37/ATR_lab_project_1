@@ -9,6 +9,10 @@ public class PlayerController : MonoBehaviour
     public float Gravity = -9.81f;
     public float GroundCheckDistance = 0.1f;
 
+    [Header("Rotation Settings")]
+    public float RotationAngle = 90f;
+    public float RotationSpeed = 90f;
+
     [Header("References")]
     public Transform GroundCheck;
     public LayerMask GroundMask = 1;
@@ -18,6 +22,8 @@ public class PlayerController : MonoBehaviour
     private bool _isGrounded;
     private Vector2 _currentMovementInput;
     private bool _isCurrentlyRunning;
+    private bool _isRotatingClockwise;
+    private bool _isRotatingAntiClockwise;
 
     void Start()
     {
@@ -31,14 +37,17 @@ public class PlayerController : MonoBehaviour
         InputHandler.OnMovementInput += HandleMovementInput;
         InputHandler.OnJumpPressed += HandleJump;
         InputHandler.OnRunToggle += HandleRunToggle;
+        InputHandler.OnRotateClockwiseToggle += HandleRotateClockwiseToggle;
+        InputHandler.OnRotateAntiClockwiseToggle += HandleRotateAntiClockwiseToggle;
     }
 
     void Update()
     {
         CheckGrounded();
         ApplyMovement();
+        ApplyRotation();
         ApplyGravity();
-        
+
         _characterController.Move(_velocity * Time.deltaTime);
     }
 
@@ -47,6 +56,8 @@ public class PlayerController : MonoBehaviour
         InputHandler.OnMovementInput -= HandleMovementInput;
         InputHandler.OnJumpPressed -= HandleJump;
         InputHandler.OnRunToggle -= HandleRunToggle;
+        InputHandler.OnRotateClockwiseToggle -= HandleRotateClockwiseToggle;
+        InputHandler.OnRotateAntiClockwiseToggle -= HandleRotateAntiClockwiseToggle;
     }
 
     void CheckGrounded()
@@ -88,6 +99,28 @@ public class PlayerController : MonoBehaviour
     void ApplyGravity()
     {
         _velocity.y += Gravity * Time.deltaTime;
+    }
+
+    void HandleRotateClockwiseToggle(bool isRotating)
+    {
+        _isRotatingClockwise = isRotating;
+    }
+
+    void HandleRotateAntiClockwiseToggle(bool isRotating)
+    {
+        _isRotatingAntiClockwise = isRotating;
+    }
+
+    void ApplyRotation()
+    {
+        if (_isRotatingClockwise)
+        {
+            transform.Rotate(0, RotationSpeed * Time.deltaTime, 0);
+        }
+        else if (_isRotatingAntiClockwise)
+        {
+            transform.Rotate(0, -RotationSpeed * Time.deltaTime, 0);
+        }
     }
 
     void OnDrawGizmosSelected()

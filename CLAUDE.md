@@ -4,60 +4,69 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Unity 3D project (Unity 6000.2.2f1) using the Universal Render Pipeline (URP). The project includes:
+This is a Unity 3D project (Unity 6000.2.2f1) using the Universal Render Pipeline (URP). The project implements a remote-controllable player character system with HTTP API integration for external control via Python clients.
 
-- Input System for handling player input
-- AI Navigation package for pathfinding
-- Visual Scripting for node-based programming
-- Test Framework for unit testing
+## Core Architecture
 
-## Unity Project Structure
+### Event-Driven Input System
+The project uses a decoupled event-driven architecture for handling input:
 
-- `Assets/Scenes/` - Unity scene files
-  - `SampleScene.unity` - Default Unity sample scene
-  - `Exp_Scene_1.unity` - Custom experimental scene
-- `Assets/Script/` - C# scripts directory (currently empty)
-- `Assets/Material/` - Materials and textures
-- `Assets/nappin/` - Additional assets directory
-- `Assets/TutorialInfo/` - Unity tutorial readme system
-- `ProjectSettings/` - Unity project configuration files
-- `Packages/manifest.json` - Unity package dependencies
+- **InputHandler.cs**: Central input processor that supports both keyboard input and HTTP server commands
+- **PlayerController.cs**: Subscribes to input events and applies movement/actions to the character
+- **HttpServer.cs**: HTTP listener that receives external commands and forwards them to the input system
+- **UnityMainThreadDispatcher.cs**: Thread-safe utility for executing HTTP callbacks on Unity's main thread
+
+### Remote Control Integration
+The system supports external control through a REST API:
+- HTTP endpoint: `POST http://localhost:8080/command`
+- Command format: JSON with movement vectors, action flags (running, jumping, rotation)
+- **PlayerCommand.cs**: Serializable data structure for command transmission
+- **Python client** (`Python/unity_client_example.py`): Example external controller
 
 ## Development Commands
 
 ### Unity Editor
-- Open the project through Unity Hub or directly with Unity Editor 6000.2.2f1
-- Build the project using Unity Editor's Build Settings (File → Build Settings)
+- Open project through Unity Hub with Unity Editor 6000.2.2f1
+- Main scene: `Assets/Scenes/Exp_Scene_1.unity`
+- Build using File → Build Settings
 
-### Testing
-- Run tests through Unity Test Runner (Window → General → Test Runner)
-- Tests should be placed in appropriate test directories following Unity conventions
+### Testing HTTP Integration
+1. Start Unity and enter Play mode
+2. Run Python client: `python Python/unity_client_example.py`
+3. Verify player responds to programmatic commands
 
-## Key Dependencies
+### Key Dependencies
+- **Input System** (1.14.2) - Modern input handling
+- **Universal Render Pipeline** (17.2.0) - Rendering
+- **AI Navigation** (2.0.8) - NavMesh pathfinding
+- **Visual Scripting** (1.9.7) - Node-based programming
 
-- **Universal Render Pipeline (URP)** - For rendering pipeline
-- **Input System** - Modern input handling system
-- **AI Navigation** - For NavMesh and pathfinding
-- **Visual Scripting** - Node-based visual programming
-- **Timeline** - For cinematic sequences and animations
+## Architecture Patterns
 
-## Code Style and Conventions
+### Thread Safety
+- HTTP server runs on background thread
+- `UnityMainThreadDispatcher` ensures Unity API calls execute on main thread
+- Event subscription/unsubscription handled in `OnDestroy()` for proper cleanup
 
-### C# Naming Conventions
-Follow Unity's C# naming conventions:
+### Input Abstraction
+- `InputHandler` abstracts input source (keyboard vs HTTP)
+- `EnableServerControl` flag switches between input modes
+- Events provide loose coupling between input and player systems
 
-- **Public variables**: PascalCase (e.g., `WalkSpeed`, `JumpHeight`, `GroundCheck`)
-- **Private variables**: Underscore prefix + camelCase (e.g., `_characterController`, `_isGrounded`, `_currentMovementInput`)
-- **Methods**: PascalCase (e.g., `HandleMovementInput`, `ApplyMovement`)
-- **Events**: PascalCase with "On" prefix (e.g., `OnMovementInput`, `OnJumpPressed`)
+### Component Communication
+- Static events for system-wide communication (InputHandler → PlayerController)
+- Serializable command objects for network communication
+- Singleton pattern for thread dispatcher
 
-### Architecture Patterns
-- **Event-driven input system**: InputHandler publishes events, controllers subscribe
-- **Component-based architecture**: Use Unity's component system for modular functionality
-- **Proper event cleanup**: Always unsubscribe from events in `OnDestroy()` to prevent memory leaks
+## Code Conventions
 
-## Architecture Notes
+### C# Naming (Project-Specific)
+- **Public variables**: PascalCase (`WalkSpeed`, `JumpHeight`, `EnableServerControl`)
+- **Private fields**: Underscore prefix + camelCase (`_characterController`, `_isGrounded`, `_hasServerInput`)
+- **Events**: "On" prefix + PascalCase (`OnMovementInput`, `OnJumpPressed`)
+- **HTTP endpoints**: lowercase with forward slashes (`/command`)
 
-This appears to be an early-stage Unity project with minimal custom code. The main structure follows Unity's standard project organization with scenes, assets, and project settings properly configured.
-
-The project uses Unity's newer packages including the Input System (instead of legacy input) and URP (instead of built-in render pipeline), indicating it's set up with modern Unity practices.
+### Event Management
+- Always unsubscribe from static events in `OnDestroy()`
+- Null-conditional operators for event invocation (`OnMovementInput?.Invoke()`)
+- Event cleanup prevents memory leaks between scene loads
